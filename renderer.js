@@ -76,12 +76,12 @@ const syncIpc = (args) => {
     return { avg, median, total, p95 };
 };
 
-const draw = (label, asyncIpcMedian, asyncIpcTotal, syncIpcMedian, syncIpcTotal) => {
+const draw = (label, off, on, syncIpcMedian, syncIpcTotal) => {
     const data = {
-        labels: ['async ipc median', 'async ipc total', 'sync ipc median', 'sync ipc total'],
+        labels: ['ctx isolation off', 'ctx isolation on'],
         datasets: [{
             label,
-            data: [asyncIpcMedian, asyncIpcTotal, syncIpcMedian, syncIpcTotal],
+            data: [off, on],
             backgroundColor: [
                 'rgba(255, 99, 132, 0.2)',
                 'rgba(255, 159, 64, 0.2)',
@@ -116,8 +116,20 @@ const draw = (label, asyncIpcMedian, asyncIpcTotal, syncIpcMedian, syncIpcTotal)
         },
     };
 
+    function relDiff(a, b) {
+        return 100 * Math.abs((a - b) / ((a + b) / 2));
+    }
+
     const x = document.createElement("CANVAS");
+    const h = document.createElement("H1");
+    const t = document.createTextNode(label);
+    h.appendChild(t);
+    document.getElementById("charts").appendChild(h);
     document.getElementById("charts").appendChild(x);
+    const p = document.createElement("DIV");
+    const rel = Math.round(relDiff(on, off) * 100) / 100;
+    p.appendChild(document.createTextNode('Regression is ' + rel + '%'));
+    document.getElementById("charts").appendChild(p);
 
     const myChart = new Chart(
         x,
@@ -128,37 +140,49 @@ const draw = (label, asyncIpcMedian, asyncIpcTotal, syncIpcMedian, syncIpcTotal)
 
 
 (async () => {
-    console.log('ASYNC IPC, 100000 iterations');
+    // console.log('ASYNC IPC, 100000 iterations');
 
-    console.log('primitive')
-    const primitiveAsync = await asyncIpc(new Array(100000).fill(1));
+    // console.log('primitive')
+    // const primitiveAsync = await asyncIpc(new Array(100000).fill(1));
 
-    console.log('string')
-    const stringAsync = await asyncIpc(new Array(100000).fill('str'));
+    // console.log('string')
+    // const stringAsync = await asyncIpc(new Array(100000).fill('str'));
 
-    console.log('object')
-    const objectAsync = await asyncIpc(new Array(100000).fill({
-        firstName: "John",
-        lastName: "Doe",
-        id: 5566
-    }));
+    // console.log('object')
+    // const objectAsync = await asyncIpc(new Array(100000).fill({
+    //     firstName: "John",
+    //     lastName: "Doe",
+    //     id: 5566
+    // }));
 
-    console.log('SYNC IPC, 100000 iterations');
+    // console.log('SYNC IPC, 100000 iterations');
 
-    console.log('primitive')
-    const primitiveSync = syncIpc(new Array(100000).fill(1));
+    // console.log('primitive')
+    // const primitiveSync = syncIpc(new Array(100000).fill(1));
 
-    console.log('string')
-    const stringSync = syncIpc(new Array(100000).fill('str'));
+    // console.log('string')
+    // const stringSync = syncIpc(new Array(100000).fill('str'));
 
-    console.log('object')
-    const objectSync = syncIpc(new Array(100000).fill({
-        firstName: "John",
-        lastName: "Doe",
-        id: 5566
-    }));
+    // console.log('object')
+    // const objectSync = syncIpc(new Array(100000).fill({
+    //     firstName: "John",
+    //     lastName: "Doe",
+    //     id: 5566
+    // }));
 
     // draw('primitive', primitiveAsync.median, primitiveAsync.total, primitiveSync.median, primitiveSync.total);
     // draw('string', stringAsync.median, stringAsync.total, stringSync.median, stringSync.total);
     // draw('object', objectAsync.median, objectAsync.total, objectSync.median, objectSync.total);
+    draw('E10: primitive, p95', 0.0950000248849392, 0.09999994654208422);
+    draw('E10: string, p95', 0.0950000248849392, 0.1200000406242907);
+    draw('E10: object, p95', 0.10500004282221198, 0.11500000255182385);
+    draw('E10: primitive, total', 6498.874999990221, 6745.764999999665);
+    draw('E10: string, total', 6497.830000007525, 7171.60000000149);
+    draw('E10: object, total', 7002.740000025369, 7878.3800000092015);
+    draw('E16: primitive, p95', 0.19999998807907104, 1);
+    draw('E16: string, p95', 0.19999998807907104, 0.19999998807907104);
+    draw('E16: object, p95', 0.19999998807907104, 0.19999998807907104);
+    draw('E16: primitive, total', 6270, 17591.399999976158);
+    draw('E16: string, total', 6887.800000011921, 6703.700000047684);
+    draw('E16: object, total', 7000.099999964237, 7678);
 })();

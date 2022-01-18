@@ -1,3 +1,7 @@
+# SYNC IPC, 100000 iterations
+
+![graphs](./_Users_nikitakot_code_ms_playground_context-isolation-benchmark_index.html.png)
+
 # E10
 
 ```

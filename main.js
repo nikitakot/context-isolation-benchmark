@@ -1,5 +1,5 @@
 // Modules to control application life and create native browser window
-const {app, BrowserWindow} = require('electron')
+const { app, BrowserWindow, MessageChannelMain, ipcMain } = require('electron')
 const path = require('path')
 
 function createWindow () {
@@ -8,6 +8,8 @@ function createWindow () {
     width: 800,
     height: 600,
     webPreferences: {
+      contextIsolation: true,
+      sandbox: true,
       preload: path.join(__dirname, 'preload.js')
     }
   })
@@ -15,8 +17,29 @@ function createWindow () {
   // and load the index.html of the app.
   mainWindow.loadFile('index.html')
 
+  // We'll be sending one end of this channel to the main world of the
+  // context-isolated page.
+  const { port1, port2 } = new MessageChannelMain()
+
+  // We can also receive messages from the main world of the renderer.
+  port2.on('message', (event) => {
+    // console.log('from renderer main world:', event.data)
+    port2.postMessage(event.data);
+  })
+  port2.start()
+
+  ipcMain.on('ipcEvent', (event, arg) => {
+    event.sender.send('ipcEvent', arg)
+  });
+
+  // The preload script will receive this IPC message and transfer the port
+  // over to the main world.
+  mainWindow.webContents.once('did-finish-load', () => {
+    mainWindow.webContents.postMessage('main-world-port', null, [port1])
+  })
+
   // Open the DevTools.
-  // mainWindow.webContents.openDevTools()
+  mainWindow.webContents.openDevTools()
 }
 
 // This method will be called when Electron has finished

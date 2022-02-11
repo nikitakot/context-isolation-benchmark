@@ -44,14 +44,9 @@ const quantile = (arr, q) => {
     }
 };
 
-const ipcSendWithResponse = async (arg) => new Promise(resolve => {
-    window.ipcOn((arg) => { resolve(arg); });
-    window.ipcSend(arg);
-});
-
 const ipcWrapper = async (val) => {
     const startTime = performance.now();
-    await ipcSendWithResponse(val);
+    await window.ipcSend(val);
     const endTime = performance.now();
     return endTime - startTime;
 };
@@ -78,16 +73,9 @@ const ipcMetrics = async (args) => {
 (async () => {
     const port = await messagePortPromise;
 
-    const messagePortSendWithResponse = async (arg) => new Promise(resolve => {
-        port.onmessage = (event) => {
-            resolve(event.data);
-        };
-        port.postMessage(arg);
-    });
-
     const messagePortWrapper = async (val) => {
         const startTime = performance.now();
-        await messagePortSendWithResponse(val);
+        await port.postMessage(val);
         const endTime = performance.now();
         return endTime - startTime;
     };

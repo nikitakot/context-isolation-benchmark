@@ -99,16 +99,16 @@ const ipcMetrics = async (args) => {
         return { avg, median, total, p95 };
     };
 
-    console.log(await messagePortMetrics(new Array(100000).fill({
+    console.log(JSON.stringify(await messagePortMetrics(new Array(100000).fill({
         firstName: "John",
         lastName: "Doe",
         id: 5566
-    })))
+    }))))
 
-    console.log(await ipcMetrics(new Array(100000).fill({
+    console.log(JSON.stringify(await ipcMetrics(new Array(100000).fill({
         firstName: "John",
         lastName: "Doe",
         id: 5566
-    })))
+    }))))
 
 })();

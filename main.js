@@ -2,13 +2,29 @@
 const { app, BrowserWindow, MessageChannelMain, ipcMain } = require('electron')
 const path = require('path')
 
-function createWindow () {
+function isString(x) {
+  return Object.prototype.toString.call(x) === "[object String]"
+}
+
+function isObj(x) {
+  return typeof x === 'object' &&
+    !Array.isArray(x) &&
+    x !== null;
+}
+
+const add = (v1, v2) => {
+  if (Number.isInteger(v1) && Number.isInteger(v2)) return v1 + v2;
+  if (isString(v1) && isString(v2)) return v1 + v2;
+  if (isObj(v1) && isObj(v2)) return { ...v1, ...v2 };
+}
+
+function createWindow() {
   // Create the browser window.
   const mainWindow = new BrowserWindow({
     width: 800,
     height: 600,
     webPreferences: {
-      contextIsolation: false,
+      contextIsolation: true,
       sandbox: true,
       preload: path.join(__dirname, 'preload.js')
     }
@@ -23,14 +39,18 @@ function createWindow () {
 
   // We can also receive messages from the main world of the renderer.
   port2.on('message', (event) => {
-    // console.log('from renderer main world:', event.data)
-    port2.postMessage(event.data);
+    port2.postMessage(add(event.data[0], event.data[1]));
   })
   port2.start()
 
   ipcMain.on('ipcEvent', (event, arg) => {
     event.sender.send('ipcEvent', arg)
   });
+
+  ipcMain.on('ipcEventSync', (event, ...args) => {
+    // console.log(args);
+    event.returnValue = add(args[0], args[1]);
+  })
 
   // The preload script will receive this IPC message and transfer the port
   // over to the main world.

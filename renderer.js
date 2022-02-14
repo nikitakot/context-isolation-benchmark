@@ -44,19 +44,92 @@ const quantile = (arr, q) => {
     }
 };
 
-const ipcWrapper = async (val) => {
+const measueMessagePort = async (args) => {
     const startTime = performance.now();
-    await window.ipcSend(val);
-    const endTime = performance.now();
-    return endTime - startTime;
-};
-
-const ipcMetrics = async (args) => {
-    const startTime = performance.now();
+    const port = await messagePortPromise;
+    let counter = 10;
+    let i = 0;
+    let t = performance.now();
     const perf = [];
-    for (const p of args) {
-        const t = await ipcWrapper(p);
-        perf.push(t);
+    const done = new Promise(resolve => {
+        port.onmessage = (event) => {
+            if (i < args.length) {
+                if (counter > 1) {
+                    counter--;
+                } else {
+                    perf.push(performance.now() - t);
+                    t = performance.now();
+                    counter = 10;
+                }
+                port.postMessage(args[i++]);
+            } else {
+                resolve();
+            }
+        };
+    })
+    port.postMessage(args[i++]);
+    await done;
+    const endTime = performance.now();
+    const avg = average(perf);
+    console.log('avg: ', avg);
+    const median = quantile(perf, .50);
+    console.log('median: ', median);
+    const p95 = quantile(perf, .95)
+    console.log('p95: ', p95)
+    const total = endTime - startTime;
+    console.log('total: ', total);
+    return { avg, median, total, p95 };
+}
+
+// no difference to measueMessagePort
+const measueMessagePortNoPromise = async (args) => {
+    const startTime = performance.now();
+    const port = await messagePortPromise;
+    let counter = 10;
+    let i = 0;
+    let t = performance.now();
+    const perf = [];
+    port.onmessage = (event) => {
+        if (i < args.length) {
+            if (counter > 1) {
+                counter--;
+            } else {
+                perf.push(performance.now() - t);
+                t = performance.now();
+                counter = 10;
+            }
+            port.postMessage(args[i++]);
+        } else {
+            console.log('measueMessagePortNoPromise');
+            const endTime = performance.now();
+            const avg = average(perf);
+            console.log('avg: ', avg);
+            const median = quantile(perf, .50);
+            console.log('median: ', median);
+            const p95 = quantile(perf, .95)
+            console.log('p95: ', p95)
+            const total = endTime - startTime;
+            console.log('total: ', total);
+            console.log({ avg, median, total, p95 });
+        }
+    };
+    port.postMessage(args[i++]);
+}
+
+const measureIpc = async (args) => {
+    const startTime = performance.now();
+    let counter = 10;
+    let t = performance.now();
+    const perf = [];
+    for (const v of args) {
+        const result = window.ipcSendSync(v[0], v[1]);
+        if (counter > 1) {
+            counter--;
+        } else {
+            perf.push(performance.now() - t);
+            t = performance.now();
+            counter = 10;
+        }
     }
     const endTime = performance.now();
     const avg = average(perf);
@@ -68,47 +141,36 @@ const ipcMetrics = async (args) => {
     const total = endTime - startTime;
     console.log('total: ', total);
     return { avg, median, total, p95 };
-};
+}
 
 (async () => {
-    const port = await messagePortPromise;
+    const numberPairs = new Array(100000).fill([20, 30]);
 
-    const messagePortWrapper = async (val) => {
-        const startTime = performance.now();
-        await port.postMessage(val);
-        const endTime = performance.now();
-        return endTime - startTime;
-    };
+    const stringPairs = new Array(100000).fill(['John', 'Doe']);
 
-    const messagePortMetrics = async (args) => {
-        const startTime = performance.now();
-        const perf = [];
-        for (const p of args) {
-            const t = await messagePortWrapper(p);
-            perf.push(t);
-        }
-        const endTime = performance.now();
-        const avg = average(perf);
-        console.log('avg: ', avg);
-        const median = quantile(perf, .50);
-        console.log('median: ', median);
-        const p95 = quantile(perf, .95)
-        console.log('p95: ', p95)
-        const total = endTime - startTime;
-        console.log('total: ', total);
-        return { avg, median, total, p95 };
-    };
+    const objectPairs = new Array(100000).fill(
+        [{
+            firstName: "John",
+            lastName: "Doe",
+            id: 5566
+        },
+        {
+            state: "Tucson, Arizona",
+            birthdate: "October 27 1981"
+        }]
+    );
 
-    console.log(JSON.stringify(await messagePortMetrics(new Array(100000).fill({
-        firstName: "John",
-        lastName: "Doe",
-        id: 5566
-    }))))
+    console.log('measueMessagePort')
+    const mpNum = await measueMessagePort(numberPairs);
+    const mpStr = await measueMessagePort(stringPairs);
+    const mpObj = await measueMessagePort(objectPairs);
+    const mp = { num: mpNum, str: mpStr, obj: mpObj };
 
-    console.log(JSON.stringify(await ipcMetrics(new Array(100000).fill({
-        firstName: "John",
-        lastName: "Doe",
-        id: 5566
-    }))))
+    console.log('measureIpc')
+    const ipcNum = await measureIpc(numberPairs);
+    const ipcStr = await measureIpc(stringPairs);
+    const ipcObj = await measureIpc(objectPairs);
+    const ipc = { num: ipcNum, str: ipcStr, obj: ipcObj };
 
+    console.log(JSON.stringify({ mp, ipc }));
 })();

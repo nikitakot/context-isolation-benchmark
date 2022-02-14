@@ -21,11 +21,15 @@ if (process.contextIsolated) {
   contextBridge.exposeInMainWorld('ipcOn', (listener) => {
     ipcRenderer.once('ipcEvent', (event, ...args) => listener(...args))
   });
+
+  contextBridge.exposeInMainWorld('ipcSendSync', (...args) => ipcRenderer.sendSync('ipcEventSync', ...args));
 } else {
   window.ipcSend = (...args) => ipcRenderer.send('ipcEvent', ...args);
   window.ipcOn = (listener) => {
     ipcRenderer.once('ipcEvent', (event, ...args) => listener(...args))
   };
+
+  window.ipcSendSync = (...args) => ipcRenderer.sendSync('ipcEventSync', ...args);
 }
 
 ipcRenderer.on('main-world-port', async (event) => {
